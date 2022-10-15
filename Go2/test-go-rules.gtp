@@ -1,0 +1,24 @@
+boardsize 3
+10 legal_moves b
+#? [a1 a2 a3 b1 b2 b3 c1 c2 c3]
+
+play B B3
+20 legal_moves w
+#? [a1 a2 a3 b1 b2 c1 c2 c3]
+
+play W B2
+play B A2
+play W C3
+play B B1
+30 legal_moves w
+#? [a3 c1 c2]
+
+play W A3
+40 legal_moves b
+#? [a1 c1 c2]
+
+play B C2
+board
+50 legal_moves w
+#? [a1 c1]
+# bug.

@@ -356,6 +356,7 @@ class GtpConnection:
     def genmove_cmd(self, args: List[str]) -> None:
         """ generate a move for color args[0] in {'b','w'} """
         # change this method to use your solver
+        tt = TranspositionTable()
         board_color = args[0].lower()
         color = color_to_int(board_color)
         move = self.go_engine.get_move(self.board, color)
@@ -372,7 +373,7 @@ class GtpConnection:
         negamaxBoolean(self.board, color)
         try:
             with time_limit(self.timelimit):
-                result = negamaxBoolean(self.board, self.board.current_player)
+                result = negamaxBoolean(self.board, self.board.current_player, tt)
                 if result:
                     self.respond(format_point(point_to_coord(result, self.board.size)))
                 else:
@@ -382,7 +383,7 @@ class GtpConnection:
             
     def solve_cmd(self, args: List[str]) -> None:
         # remove this respond and implement this method
-
+        tt = TranspositionTable()
         curr_player = self.board.current_player
         opp_player = None
         if curr_player == BLACK:
@@ -392,18 +393,9 @@ class GtpConnection:
             curr_player = 'w'
             opp_player = 'b'
 
-        # t = time.process_time()
-        # result = negamaxBoolean(self.board, self.board.current_player, t, self.timelimit)
-        # print(time.process_time() - t)
-        # if result is None:
-        #     self.respond('unknown')
-        # elif result:
-        #     self.respond(curr_player + ' ' + str(format_point(point_to_coord(result, self.board.size))))
-        # else:
-        #     self.respond(opp_player)
         try:
             with time_limit(self.timelimit):
-                result = negamaxBoolean(self.board, self.board.current_player)
+                result = negamaxBoolean(self.board, self.board.current_player, tt)
                 if result:
                     self.respond(curr_player + ' ' + str(format_point(point_to_coord(result, self.board.size))))
                 else:
@@ -415,6 +407,25 @@ class GtpConnection:
         # remove this respond and implement this method
         self.timelimit = int(args[0])
         self.respond()
+
+class TranspositionTable(object):
+    # Table is stored in a dictionary, with board code as key,
+    # and minimax score as the value
+
+    # Empty dictionary
+    def __init__(self):
+        self.table = {}
+
+    # Used to print the whole table with print(tt)
+    def __repr__(self):
+        return self.table.__repr__()
+
+    def store(self, code, score):
+        self.table[code] = score
+
+    # Python dictionary returns 'None' if key not found by get()
+    def lookup(self, code):
+        return self.table.get(code)
 
 class TimeoutException(Exception): pass
 
@@ -429,47 +440,29 @@ def time_limit(seconds):
     finally:
         signal.alarm(0)
 
-def negamaxBoolean(board, color):
+def storeResult(tt, board, result):
+    tt.store(board.board.tobytes(), result)
+    return result
+
+def negamaxBoolean(board, color, tt):
+    result = tt.lookup(board.board.tobytes())
+    if result != None:
+        return result
     moves = GoBoardUtil.generate_legal_moves(board, color)
     gtp_moves: List[str] = []
     for move in moves:
         coords: Tuple[int, int] = point_to_coord(move, board.size)
         gtp_moves.append(format_point(coords))
     if gtp_moves == []:
-        return False
+        return storeResult(tt, board, False)
+    print(gtp_moves)
     for m in moves:
         board_copy: GoBoard = board.copy()
         board_copy.play_move(m, color)
-        success = negamaxBoolean(board_copy, opponent(color))
+        success = negamaxBoolean(board_copy, opponent(color), tt)
         if not success:
-            return m
-    return False
-
-    #
-    # def negamaxBoolean(board, color, t, limit):
-    #     if time.process_time() - t > limit:
-    #         return None
-    #     moves = GoBoardUtil.generate_legal_moves(board, color)
-    #     gtp_moves: List[str] = []
-    #     for move in moves:
-    #         coords: Tuple[int, int] = point_to_coord(move, board.size)
-    #         gtp_moves.append(format_point(coords))
-    #     if gtp_moves == []:
-    #         if time.process_time() - t > limit:
-    #             return None
-    #         else:
-    #             return False
-    #     for m in moves:
-    #         board_copy: GoBoard = board.copy()
-    #         board_copy.play_move(m, color)
-    #         success = negamaxBoolean(board_copy, opponent(color), t, limit)
-    #         if time.process_time() - t > limit or success is None:
-    #             return None
-    #         if not success:
-    #             return m
-    #     if time.process_time() - t > limit:
-    #         return None
-    #     return False
+            return storeResult(tt, board, m)
+    return storeResult(tt, board, False)
 
     """
     ==========================================================================

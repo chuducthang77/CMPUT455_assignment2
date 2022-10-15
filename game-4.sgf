@@ -1,0 +1,12 @@
+(;FF[4]CA[UTF-8]AP[gogui-twogtp:1.5.1]SZ[3]
+KM[0]PB[Go1]PW[Go2]DT[2022-10-15]
+C[Black command: ./Go1/Go1.py
+White command: ./Go2/Go2.py
+Black version: 1.0
+White version: 1.0
+Result[Black\]: ?
+Result[White\]: ?
+Host: Chus-MacBook-Pro.local
+Date: October 15, 2022 at 2:22:08 PM MDT]
+;B[bc];W[aa];B[cb];W[ab];B[ac];W[ca];B[ba];W[];B[bb];W[ab]
+;B[aa];W[];B[])
