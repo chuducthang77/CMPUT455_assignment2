@@ -13,6 +13,10 @@ import numpy as np
 import re
 from sys import stdin, stdout, stderr
 from typing import Any, Callable, Dict, List, Tuple
+import time
+import signal
+from contextlib import contextmanager
+
 
 from board_base import (
     is_black_white,
@@ -75,6 +79,7 @@ class GtpConnection:
             "play": (2, "Usage: play {b,w} MOVE"),
             "legal_moves": (1, "Usage: legal_moves {w,b}"),
         }
+        self.timelimit = 1
 
     def write(self, data: str) -> None:
         stdout.write(data)
@@ -310,9 +315,9 @@ class GtpConnection:
         if len(legal_moves) > 0:
             self.respond('unknown')
         elif self.board.current_player == BLACK:
-            self.respond('black')
-        else:
             self.respond('white')
+        else:
+            self.respond('black')
             
 
     def play_cmd(self, args: List[str]) -> None:
@@ -355,25 +360,117 @@ class GtpConnection:
         color = color_to_int(board_color)
         move = self.go_engine.get_move(self.board, color)
         if move is None:
-            self.respond('unknown')
+            self.respond('resign')
             return
-            
-        move_coord = point_to_coord(move, self.board.size)
-        move_as_string = format_point(move_coord)
-        if self.board.is_legal(move, color):
-            self.board.play_move(move, color)
-            self.respond(move_as_string)
-        else:
-            self.respond("Illegal move: {}".format(move_as_string))
-            
+        # move_coord = point_to_coord(move, self.board.size)
+        # move_as_string = format_point(move_coord)
+        # if self.board.is_legal(move, color):
+        #     self.board.play_move(move, color)
+        #     self.respond(move_as_string)
+        # else:
+        #     self.respond("Illegal move: {}".format(move_as_string))
+        negamaxBoolean(self.board, color)
+        try:
+            with time_limit(self.timelimit):
+                result = negamaxBoolean(self.board, self.board.current_player)
+                if result:
+                    self.respond(format_point(point_to_coord(result, self.board.size)))
+                else:
+                    self.respond('resign')
+        except TimeoutException as e:
+            self.respond(move[0])
             
     def solve_cmd(self, args: List[str]) -> None:
         # remove this respond and implement this method
-        self.respond('Implement This for Assignment 2')
+
+        curr_player = self.board.current_player
+        opp_player = None
+        if curr_player == BLACK:
+            curr_player = 'b'
+            opp_player = 'w'
+        else:
+            curr_player = 'w'
+            opp_player = 'b'
+
+        # t = time.process_time()
+        # result = negamaxBoolean(self.board, self.board.current_player, t, self.timelimit)
+        # print(time.process_time() - t)
+        # if result is None:
+        #     self.respond('unknown')
+        # elif result:
+        #     self.respond(curr_player + ' ' + str(format_point(point_to_coord(result, self.board.size))))
+        # else:
+        #     self.respond(opp_player)
+        try:
+            with time_limit(self.timelimit):
+                result = negamaxBoolean(self.board, self.board.current_player)
+                if result:
+                    self.respond(curr_player + ' ' + str(format_point(point_to_coord(result, self.board.size))))
+                else:
+                    self.respond(opp_player)
+        except TimeoutException as e:
+            self.respond('unknown')
 
     def timelimit_cmd(self, args: List[str]) -> None:
         # remove this respond and implement this method
-        self.respond('Implement This for Assignment 2')
+        self.timelimit = int(args[0])
+        self.respond()
+
+class TimeoutException(Exception): pass
+
+@contextmanager
+def time_limit(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutException("Timed out!")
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+
+def negamaxBoolean(board, color):
+    moves = GoBoardUtil.generate_legal_moves(board, color)
+    gtp_moves: List[str] = []
+    for move in moves:
+        coords: Tuple[int, int] = point_to_coord(move, board.size)
+        gtp_moves.append(format_point(coords))
+    if gtp_moves == []:
+        return False
+    for m in moves:
+        board_copy: GoBoard = board.copy()
+        board_copy.play_move(m, color)
+        success = negamaxBoolean(board_copy, opponent(color))
+        if not success:
+            return m
+    return False
+
+    #
+    # def negamaxBoolean(board, color, t, limit):
+    #     if time.process_time() - t > limit:
+    #         return None
+    #     moves = GoBoardUtil.generate_legal_moves(board, color)
+    #     gtp_moves: List[str] = []
+    #     for move in moves:
+    #         coords: Tuple[int, int] = point_to_coord(move, board.size)
+    #         gtp_moves.append(format_point(coords))
+    #     if gtp_moves == []:
+    #         if time.process_time() - t > limit:
+    #             return None
+    #         else:
+    #             return False
+    #     for m in moves:
+    #         board_copy: GoBoard = board.copy()
+    #         board_copy.play_move(m, color)
+    #         success = negamaxBoolean(board_copy, opponent(color), t, limit)
+    #         if time.process_time() - t > limit or success is None:
+    #             return None
+    #         if not success:
+    #             return m
+    #     if time.process_time() - t > limit:
+    #         return None
+    #     return False
+
     """
     ==========================================================================
     Assignment 2 - game-specific commands end here
@@ -394,7 +491,7 @@ def format_point(move: Tuple[int, int]) -> str:
     Return move coordinates as a string such as 'A1'
     """
     assert MAXSIZE <= 25
-    column_letters = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
+    column_letters = "ABCDEFGHJKLMNOPQRSTUVWXYZ".lower()
     row, col = move
     return column_letters[col - 1] + str(row)
 
