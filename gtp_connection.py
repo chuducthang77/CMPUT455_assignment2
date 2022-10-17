@@ -380,7 +380,7 @@ class GtpConnection:
                     self.respond('resign')
         except TimeoutException as e:
             self.respond(move[0])
-            
+
     def solve_cmd(self, args: List[str]) -> None:
         # remove this respond and implement this method
         tt = TranspositionTable()
@@ -395,7 +395,9 @@ class GtpConnection:
 
         try:
             with time_limit(self.timelimit):
+                start = time.time()
                 result = negamaxBoolean(self.board, self.board.current_player, tt)
+                print(time.time() - start)
                 if result:
                     self.respond(curr_player + ' ' + str(format_point(point_to_coord(result, self.board.size))))
                 else:
@@ -405,6 +407,7 @@ class GtpConnection:
 
     def timelimit_cmd(self, args: List[str]) -> None:
         # remove this respond and implement this method
+        assert 1 <= int(args[0]) <= 300
         self.timelimit = int(args[0])
         self.respond()
 
@@ -455,11 +458,12 @@ def negamaxBoolean(board, color, tt):
         gtp_moves.append(format_point(coords))
     if gtp_moves == []:
         return storeResult(tt, board, False)
-    print(gtp_moves)
     for m in moves:
-        board_copy: GoBoard = board.copy()
-        board_copy.play_move(m, color)
-        success = negamaxBoolean(board_copy, opponent(color), tt)
+        # board_copy: GoBoard = board.copy()
+        # board_copy.play_move(m, color)
+        board.simulate_play_move(m, color)
+        success = negamaxBoolean(board, opponent(color), tt)
+        board.simulate_play_move(m, EMPTY)
         if not success:
             return storeResult(tt, board, m)
     return storeResult(tt, board, False)

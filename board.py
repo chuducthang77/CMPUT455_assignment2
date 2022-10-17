@@ -87,9 +87,38 @@ class GoBoard(object):
         This method tries to play the move on a temporary copy of the board.
         This prevents the board from being modified by the move
         """
-        board_copy: GoBoard = self.copy()
-        can_play_move = board_copy.play_move(point, color)
-        return can_play_move
+        # board_copy: GoBoard = self.copy()
+        # can_play_move = board_copy.play_move(point, color)
+        # return can_play_move
+
+        assert is_black_white(color)
+
+        if self.board[point] != EMPTY:
+            return False
+
+        opp_color = opponent(color)
+        # in_enemy_eye = self._is_surrounded(point, opp_color)
+        self.board[point] = color
+        neighbors = self._neighbors(point)
+
+        # check for capturing
+        for nb in neighbors:
+            if self.board[nb] == opp_color:
+                captured = self._detect_and_process_capture(nb)
+                if captured:
+                    # undo capturing move
+                    self.board[point] = EMPTY
+                    return False
+
+        # check for suicide
+        block = self._block_of(point)
+        if not self._has_liberty(block):
+            # undo suicide move
+            self.board[point] = EMPTY
+            return False
+
+        self.board[point] = EMPTY
+        return True
 
         
            
@@ -197,6 +226,13 @@ class GoBoard(object):
         opp_block = self._block_of(nb_point)
         return not self._has_liberty(opp_block)
 
+    def simulate_play_move(self, point: GO_POINT, color: GO_COLOR) -> bool:
+        """
+        Play a move of color on point
+        Returns whether move was legal
+        """
+
+        self.board[point] = color
 
     def play_move(self, point: GO_POINT, color: GO_COLOR) -> bool:
         """
