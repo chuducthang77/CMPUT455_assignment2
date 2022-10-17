@@ -363,23 +363,18 @@ class GtpConnection:
         if move is None:
             self.respond('resign')
             return
-        # move_coord = point_to_coord(move, self.board.size)
-        # move_as_string = format_point(move_coord)
-        # if self.board.is_legal(move, color):
-        #     self.board.play_move(move, color)
-        #     self.respond(move_as_string)
-        # else:
-        #     self.respond("Illegal move: {}".format(move_as_string))
-        # negamaxBoolean(self.board, color)
         try:
             with time_limit(self.timelimit):
-                result = negamaxBoolean(self.board, self.board.current_player, tt)
+                result = negamaxBoolean(self.board, color, tt)
                 if result:
+                    self.board.play_move(result, color)
                     self.respond(format_point(point_to_coord(result, self.board.size)))
                 else:
-                    self.respond('resign')
+                    self.board.play_move(move, color)
+                    self.respond(format_point(point_to_coord(move, self.board.size)))
         except TimeoutException as e:
-            self.respond(move[0])
+            self.board.play_move(move, color)
+            self.respond(format_point(point_to_coord(move, self.board.size)))
 
     def solve_cmd(self, args: List[str]) -> None:
         # remove this respond and implement this method
@@ -392,12 +387,10 @@ class GtpConnection:
         else:
             curr_player = 'w'
             opp_player = 'b'
-
+        # Reference https://stackoverflow.com/questions/366682/how-to-limit-execution-time-of-a-function-call
         try:
             with time_limit(self.timelimit):
-                start = time.time()
                 result = negamaxBoolean(self.board, self.board.current_player, tt)
-                print(time.time() - start)
                 if result:
                     self.respond(curr_player + ' ' + str(format_point(point_to_coord(result, self.board.size))))
                 else:
@@ -407,7 +400,7 @@ class GtpConnection:
 
     def timelimit_cmd(self, args: List[str]) -> None:
         # remove this respond and implement this method
-        assert 1 <= int(args[0]) <= 300
+        assert 1 <= int(args[0]) <= 100
         self.timelimit = int(args[0])
         self.respond()
 
@@ -434,7 +427,7 @@ class TimeoutException(Exception): pass
 
 @contextmanager
 def time_limit(seconds):
-    def signal_handler(signum, frame):
+    def signal_handler():
         raise TimeoutException("Timed out!")
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(seconds)
@@ -458,10 +451,6 @@ def negamaxBoolean(board, color, tt):
         gtp_moves.append(format_point(coords))
     if gtp_moves == []:
         return storeResult(tt, board, False)
-    # print(board.current_player)
-    # print(gtp_moves)
-    # if depth == 10:
-    #     exit()
     for m in moves:
         # board_copy: GoBoard = board.copy()
         # board_copy.play_move(m, color)

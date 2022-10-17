@@ -60,6 +60,7 @@ class GoBoard(object):
         self.current_player: GO_COLOR = BLACK
         self.maxpoint: int = board_array_size(size)
         self.board: np.ndarray[GO_POINT] = np.full(self.maxpoint, BORDER, dtype=GO_POINT)
+        self.liberty_of: np.ndarray[GO_POINT] = np.full(self.maxpoint, NO_POINT, dtype=GO_POINT)
         self._initialize_empty_points(self.board)
         
         
@@ -230,6 +231,18 @@ class GoBoard(object):
         opp_block = self._block_of(nb_point)
         return not self._has_liberty(opp_block)
 
+    def _fast_liberty_check(self, nb_point: GO_POINT) -> bool:
+        lib = self.liberty_of[nb_point]
+        if lib != NO_POINT and self.get_color(lib) == EMPTY:
+            return True  # quick exit, block has a liberty
+        if self._stone_has_liberty(nb_point):
+            return True  # quick exit, no need to look at whole block
+        return False
+
+    def _stone_has_liberty(self, stone: GO_POINT) -> bool:
+        lib = self.find_neighbor_of_color(stone, EMPTY)
+        return lib != NO_POINT
+
     def simulate_play_move(self, point: GO_POINT, color: GO_COLOR) -> bool:
         """
         Play a move of color on point
@@ -237,6 +250,7 @@ class GoBoard(object):
         """
 
         self.board[point] = color
+
 
     def play_move(self, point: GO_POINT, color: GO_COLOR) -> bool:
         """
