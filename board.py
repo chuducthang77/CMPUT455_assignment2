@@ -120,8 +120,8 @@ class GoBoard(object):
         self.board[point] = EMPTY
         return True
 
-        
-           
+
+
     def get_empty_points(self) -> np.ndarray:
         """
         Return:
@@ -133,8 +133,8 @@ class GoBoard(object):
         assert row >= 1
         assert row <= self.size
         return row * self.NS + 1
-        
-        
+
+
     def _initialize_empty_points(self, board_array: np.ndarray) -> None:
         """
         Fills points on the board with EMPTY
@@ -162,8 +162,8 @@ class GoBoard(object):
             elif self.board[d] == opp_color:
                 false_count += 1
         return false_count <= 1 - at_edge  # 0 at edge, 1 in center
-        
-        
+
+
     def _is_surrounded(self, point: GO_POINT, color: GO_COLOR) -> bool:
         """
         check whether empty point is surrounded by stones of color
@@ -181,11 +181,15 @@ class GoBoard(object):
         block is a numpy boolean array
         """
         for stone in where1d(block):
-            empty_nbs = self.neighbors_of_color(stone, EMPTY)
-            if empty_nbs:
+            if self.find_neighbor_of_color(stone, EMPTY):
                 return True
         return False
-        
+
+    def find_neighbor_of_color(self, point, color):
+        for nb in self._neighbors(point):
+            if self.get_color(nb) == color:
+                return nb
+        return None
         
     def _block_of(self, stone: GO_POINT) -> np.ndarray:
         """

@@ -370,7 +370,7 @@ class GtpConnection:
         #     self.respond(move_as_string)
         # else:
         #     self.respond("Illegal move: {}".format(move_as_string))
-        negamaxBoolean(self.board, color)
+        # negamaxBoolean(self.board, color)
         try:
             with time_limit(self.timelimit):
                 result = negamaxBoolean(self.board, self.board.current_player, tt)
@@ -458,6 +458,10 @@ def negamaxBoolean(board, color, tt):
         gtp_moves.append(format_point(coords))
     if gtp_moves == []:
         return storeResult(tt, board, False)
+    # print(board.current_player)
+    # print(gtp_moves)
+    # if depth == 10:
+    #     exit()
     for m in moves:
         # board_copy: GoBoard = board.copy()
         # board_copy.play_move(m, color)
